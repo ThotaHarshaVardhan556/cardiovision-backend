@@ -23,6 +23,7 @@ import logging
 import uvicorn
 from pathlib import Path
 import cv2
+import urllib.request
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
@@ -77,6 +78,38 @@ def load_image_cnn():
             logger.error(f"Failed to load image CNN: {e}")
     return image_cnn_model
 
+
+def download_models():
+    """Download models from Hugging Face if not present"""
+    MODEL_DIR.mkdir(exist_ok=True)
+    
+    HF_BASE = "https://huggingface.co/Harsha556/cardiovision-models/resolve/main"
+    
+    models = [
+        {
+            "url": f"{HF_BASE}/ecg_cnn_bilstm.keras",
+            "path": MODEL_DIR / "ecg_cnn_bilstm.keras",
+            "name": "Signal CNN-BiLSTM"
+        },
+        {
+            "url": f"{HF_BASE}/ecg_mobilenetv2_final.keras",
+            "path": MODEL_DIR / "ecg_mobilenetv2_final.keras",
+            "name": "Image MobileNetV2"
+        }
+    ]
+    
+    for m in models:
+        if not m["path"].exists():
+            logger.info(f"Downloading {m['name']} from Hugging Face...")
+            try:
+                urllib.request.urlretrieve(m["url"], str(m["path"]))
+                size = m["path"].stat().st_size / (1024*1024)
+                logger.info(f"{m['name']} downloaded: {size:.1f} MB")
+            except Exception as e:
+                logger.error(f"Failed to download {m['name']}: {e}")
+        else:
+            size = m["path"].stat().st_size / (1024*1024)
+            logger.info(f"{m['name']} exists: {size:.1f} MB")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CLASS DEFINITIONS
@@ -914,6 +947,7 @@ def run_analysis(raw_signal: np.ndarray, filename: str,
 # GLOBALS
 # ─────────────────────────────────────────────────────────────────────────────
 
+download_models()
 engine       = CardioVisionEngine()
 preprocessor = engine.preprocessor
 digitizer    = engine.digitizer
